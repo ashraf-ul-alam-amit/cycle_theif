@@ -24,7 +24,7 @@ def face_matcher(img,cycle_id):
         # print(results)
         return results.count(True)<results.count(False)
     else:
-        return False
+        return True
 
 
 # image=cv2.imread("./Parking_person_image/9.jpg")

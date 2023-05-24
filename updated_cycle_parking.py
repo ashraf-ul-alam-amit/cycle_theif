@@ -43,7 +43,13 @@ encoder = gdet.create_box_encoder(model_filename, batch_size=1)
 metric = nn_matching.NearestNeighborDistanceMetric('cosine', max_cosine_distance, nn_budget)
 tracker = Tracker(metric)
 
-vid = cv2.VideoCapture("./videos/new/VID_20230517_135531.mp4")
+vid = cv2.VideoCapture("./videos/new/VID_20230517_140004.mp4")
+
+codec = cv2.VideoWriter_fourcc(*'XVID')
+vid_fps =int(vid.get(cv2.CAP_PROP_FPS))
+vid_width,vid_height = int(vid.get(cv2.CAP_PROP_FRAME_WIDTH)), int(vid.get(cv2.CAP_PROP_FRAME_HEIGHT))
+out = cv2.VideoWriter('./videos/result/results.mp4', codec, vid_fps, (vid_width, vid_height))
+
 
 def point_distance(x1,y1,x2,y2):
     return (((x2-x1)**2)+((y2-y1)**2))**0.5
@@ -150,7 +156,7 @@ while True:
         elif class_name=="bicycle":
             bicycle.append((trackID,(center_x,center_y)))
             if trackID not in bicycle_parked:
-                bicycle_parked[trackID]=[0,0,0,center_x,center_y]  #[parked, frame_count, center_point_distance cx, cy]
+                bicycle_parked[trackID]=[0,0,0,center_x,center_y,0]  #[parked, frame_count, center_point_distance cx, cy, thief_frame_count]
 
             bicycle_parked[trackID][2]=point_distance(bicycle_parked[trackID][3],bicycle_parked[trackID][4],int(((dict_of_bbox[trackID][0]) + (dict_of_bbox[trackID][2]))/2), int(((dict_of_bbox[trackID][1])+(dict_of_bbox[trackID][3]))/2))
             
@@ -218,10 +224,18 @@ while True:
                     
                     # cv2.imwrite("./Parking_person_image/thief.jpg", bbox_img)
 
-                    if (face_matcher(bbox_img,cycle_id)):
-                        print("alarm ",cycle_id,fixed_cp_iou[0][cycle_id])
+                    if(bicycle_parked[cycle_id][5]<3):
+                        if (face_matcher(bbox_img,cycle_id)):
+                            print("alarm ",cycle_id,fixed_cp_iou[0][cycle_id])
+                            bicycle_parked[cycle_id][5]=bicycle_parked[cycle_id][5]+1
+                            cv2.putText(img, "Thief", (int(dict_of_bbox[person_id][0]), int(dict_of_bbox[person_id][1]-20)), 0, 0.5, (0, 0, 255), 1)
+                            cv2.putText(img, "Beign Theft", (int(dict_of_bbox[cycle_id][0]), int(dict_of_bbox[cycle_id][1]-20)), 0, 0.5, (0, 0, 255), 1)
                     else:
-                        print("Face didn't match")
+                        cv2.putText(img, "Thief", (int(dict_of_bbox[person_id][0]), int(dict_of_bbox[person_id][1]-20)), 0, 0.5, (0, 0, 255), 1)
+                        cv2.putText(img, "Beign Theft", (int(dict_of_bbox[cycle_id][0]), int(dict_of_bbox[cycle_id][1]-20)), 0, 0.5, (0, 0, 255), 1)
+
+                    # else:
+                    #     print("Face didn't match")
                     
 
 
@@ -237,14 +251,14 @@ while True:
 
 
     cv2.imshow('FRAME',img)
-    # out.write(img)
+    out.write(img)
     
 
     if cv2.waitKey(1) == ord('q'):
         break
 
 vid.release()
-# out.release()
+out.release()
 cv2.destroyAllWindows()
 
 
