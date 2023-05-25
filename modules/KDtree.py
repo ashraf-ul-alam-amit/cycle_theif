@@ -69,9 +69,9 @@ def closest_red_black_pairs(red_points, black_points):
     return nearest_red_ids
 
 
-red_points = [(1, (1, 2)), (2, (3, 4)), (3, (5, 6))]
-black_points = [(1, (2, 3)), (2, (4, 5)), (3, (7, 8))]
+# red_points = [(1, (1, 2)), (2, (3, 4)), (3, (5, 6))]
+# black_points = [(1, (2, 3)), (2, (4, 5)), (3, (7, 8))]
 
-nearest_red_ids = closest_red_black_pairs(red_points, black_points)
+# nearest_red_ids = closest_red_black_pairs(red_points, black_points)
 
-print(nearest_red_ids)
+# print(nearest_red_ids)

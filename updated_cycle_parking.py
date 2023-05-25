@@ -30,6 +30,7 @@ min_frame_for_alarm=2
 iou_threshold=20
 center_point_distance_theshold=3
 center_point_frame_theshold=10
+frame_count_threshold_for_confirm_thief=3
 
 yolov5_model = torch.hub.load('ultralytics/yolov5', 'yolov5s', pretrained=True)
 
@@ -45,10 +46,9 @@ tracker = Tracker(metric)
 
 vid = cv2.VideoCapture("./videos/new/VID_20230517_140004.mp4")
 
-codec = cv2.VideoWriter_fourcc(*'XVID')
+codec = cv2.VideoWriter_fourcc('m', 'p', '4', 'v')
 vid_fps =int(vid.get(cv2.CAP_PROP_FPS))
-vid_width,vid_height = int(vid.get(cv2.CAP_PROP_FRAME_WIDTH)), int(vid.get(cv2.CAP_PROP_FRAME_HEIGHT))
-out = cv2.VideoWriter('./videos/result/results.mp4', codec, vid_fps, (vid_width, vid_height))
+out = cv2.VideoWriter('./videos/result/results.mp4', codec, vid_fps, (1080,720))
 
 
 def point_distance(x1,y1,x2,y2):
@@ -156,24 +156,12 @@ while True:
         elif class_name=="bicycle":
             bicycle.append((trackID,(center_x,center_y)))
             if trackID not in bicycle_parked:
-                bicycle_parked[trackID]=[0,0,0,center_x,center_y,0]  #[parked, frame_count, center_point_distance cx, cy, thief_frame_count]
+                bicycle_parked[trackID]=[0,0,0,center_x,center_y,0]  #[parked, frame_count, center_point_distance, cx, cy, thief_frame_count]
 
             bicycle_parked[trackID][2]=point_distance(bicycle_parked[trackID][3],bicycle_parked[trackID][4],int(((dict_of_bbox[trackID][0]) + (dict_of_bbox[trackID][2]))/2), int(((dict_of_bbox[trackID][1])+(dict_of_bbox[trackID][3]))/2))
             
             bicycle_parked[trackID][3]=center_x
             bicycle_parked[trackID][4]=center_y
-
-            # cycle parked or not parked
-            if (fixed_cp_iou[0][trackID]!=0
-                and bicycle_parked[trackID][0]==0):
-                
-                if bicycle_parked[trackID][2]<center_point_distance_theshold:
-                    bicycle_parked[trackID][1]=bicycle_parked[trackID][1]+1
-                else:
-                    bicycle_parked[trackID][1]=0
-
-                if (bicycle_parked[trackID][1]==center_point_frame_theshold):
-                    bicycle_parked[trackID][0]=1
             
             
             
@@ -183,6 +171,20 @@ while True:
         nearest_pc_pairs=closest_red_black_pairs(bicycle,person)
 
         for person_id, cycle_id in nearest_pc_pairs.items():
+            
+            # change3
+            # cycle parked or not parked
+            if (fixed_cp_iou[0][cycle_id]==person_id
+                and bicycle_parked[cycle_id][0]==0):
+                
+                if bicycle_parked[cycle_id][2]<center_point_distance_theshold:
+                    bicycle_parked[cycle_id][1]=bicycle_parked[cycle_id][1]+1
+                else:
+                    bicycle_parked[cycle_id][1]=0
+
+                if (bicycle_parked[cycle_id][1]==center_point_frame_theshold):
+                    bicycle_parked[cycle_id][0]=1
+            # change3 end
 
             iou_=int(round(iou(dict_of_bbox[person_id],dict_of_bbox[cycle_id]), 3)*100)
             
@@ -224,12 +226,17 @@ while True:
                     
                     # cv2.imwrite("./Parking_person_image/thief.jpg", bbox_img)
 
-                    if(bicycle_parked[cycle_id][5]<3):
+                    if(bicycle_parked[cycle_id][5]<frame_count_threshold_for_confirm_thief):
                         if (face_matcher(bbox_img,cycle_id)):
-                            print("alarm ",cycle_id,fixed_cp_iou[0][cycle_id])
+                            # change2
+                            print("Alarm: Cycle : ",cycle_id," of Person : ",fixed_cp_iou[0][cycle_id], " is being theft by Person : ",person_id)
                             bicycle_parked[cycle_id][5]=bicycle_parked[cycle_id][5]+1
-                            cv2.putText(img, "Thief", (int(dict_of_bbox[person_id][0]), int(dict_of_bbox[person_id][1]-20)), 0, 0.5, (0, 0, 255), 1)
+                            # change1
+                            cv2.putText(img, "Potential Thief", (int(dict_of_bbox[person_id][0]), int(dict_of_bbox[person_id][1]-20)), 0, 0.5, (0, 0, 255), 1)
                             cv2.putText(img, "Beign Theft", (int(dict_of_bbox[cycle_id][0]), int(dict_of_bbox[cycle_id][1]-20)), 0, 0.5, (0, 0, 255), 1)
+                        else:
+                            bicycle_parked[cycle_id][1]=1
+                            bicycle_parked[cycle_id][0]=0
                     else:
                         cv2.putText(img, "Thief", (int(dict_of_bbox[person_id][0]), int(dict_of_bbox[person_id][1]-20)), 0, 0.5, (0, 0, 255), 1)
                         cv2.putText(img, "Beign Theft", (int(dict_of_bbox[cycle_id][0]), int(dict_of_bbox[cycle_id][1]-20)), 0, 0.5, (0, 0, 255), 1)
