@@ -50,28 +50,28 @@ class KDTree:
         return search_kdtree(self.root, target_point, None, float('inf'))[0]
 
 
-def closest_red_black_pairs(red_points, black_points):
+def closest_cycle_person_pairs(cycle_points, person_points):
     # Separate the points and IDs into two separate lists
-    red_ids, red_points = zip(*red_points)
-    black_ids, black_points = zip(*black_points)
+    cycle_ids, cycle_points = zip(*cycle_points)
+    person_ids, person_points = zip(*person_points)
 
-    # Construct a KD-Tree from the red points
-    tree = KDTree(list(red_points))
+    # Construct a KD-Tree from the cycle points
+    tree = KDTree(list(cycle_points))
 
-    # Find the nearest red point to each black point
-    nearest_red_ids = {}
-    for i, black_point in enumerate(black_points):
-        nearest_red_point = tree.get_nearest(black_point)
-        nearest_red_index = red_points.index(nearest_red_point)
-        nearest_red_id = red_ids[nearest_red_index]
-        nearest_red_ids[black_ids[i]] = nearest_red_id
+    # Find the nearest cycle point to each person point
+    nearest_cycle_ids = {}
+    for i, person_point in enumerate(person_points):
+        nearest_cycle_point = tree.get_nearest(person_point)
+        nearest_cycle_index = cycle_points.index(nearest_cycle_point)
+        nearest_cycle_id = cycle_ids[nearest_cycle_index]
+        nearest_cycle_ids[person_ids[i]] = nearest_cycle_id
 
-    return nearest_red_ids
+    return nearest_cycle_ids
 
 
 # red_points = [(1, (1, 2)), (2, (3, 4)), (3, (5, 6))]
 # black_points = [(1, (2, 3)), (2, (4, 5)), (3, (7, 8))]
 
-# nearest_red_ids = closest_red_black_pairs(red_points, black_points)
+# nearest_red_ids = closest_cycle_person_pairs(red_points, black_points)
 
 # print(nearest_red_ids)

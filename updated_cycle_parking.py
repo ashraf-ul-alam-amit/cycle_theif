@@ -1,6 +1,7 @@
 import numpy as np
 from pathlib import Path
 import cv2
+import os
 import pickle
 import matplotlib.pyplot as plt
 
@@ -14,7 +15,9 @@ from deep_sort.tracker import Tracker
 from tools import generate_detections as gdet
 import torch
 
-from modules.KDtree import closest_red_black_pairs
+from sqlite_handler import insert_data,create_table
+
+from modules.KDtree import closest_cycle_person_pairs
 from modules.iou import iou
 from modules.face_save import face_save
 from modules.face_recognizer import face_matcher
@@ -24,9 +27,9 @@ class_names = [c.strip() for c in open('./data/labels/coco.names').readlines()]
 cycle_person_iou = {}
 bicycle_parked={}
 fixed_cp_iou = np.zeros((2, 1000)).astype(int)
-min_frame=3
-max_frame=10
-min_frame_for_alarm=2
+min_frame=3 #3
+max_frame=15 #10
+min_frame_for_alarm=5
 iou_threshold=20
 center_point_distance_theshold=3
 center_point_frame_theshold=10
@@ -44,20 +47,19 @@ encoder = gdet.create_box_encoder(model_filename, batch_size=1)
 metric = nn_matching.NearestNeighborDistanceMetric('cosine', max_cosine_distance, nn_budget)
 tracker = Tracker(metric)
 
-vid = cv2.VideoCapture("./videos/new/VID_20230517_140004.mp4")
+vid = cv2.VideoCapture("../videos/test/video_20230515_180551.mp4")   #test/video_20230515_180213
 
 codec = cv2.VideoWriter_fourcc('m', 'p', '4', 'v')
 vid_fps =int(vid.get(cv2.CAP_PROP_FPS))
-out = cv2.VideoWriter('./videos/result/results.mp4', codec, vid_fps, (1080,720))
+out = cv2.VideoWriter('../videos/result/results_4.mp4', codec, vid_fps, (1080,720))
 
 
 def point_distance(x1,y1,x2,y2):
     return (((x2-x1)**2)+((y2-y1)**2))**0.5
 
 def POINTS(event, x, y, flags, param):
-    if event == cv2.EVENT_MOUSEMOVE :  
-        colorsBGR = [x, y]
-        print(colorsBGR)
+    if event == cv2.EVENT_LBUTTONDOWN :  
+        print("x={}, y={}".format(x, y))
         
 #video frame
 cv2.namedWindow('FRAME')
@@ -99,7 +101,7 @@ while True:
         x2=(x2-x1)
         y2=(y2-y1)
 
-        if((cls=="person" or cls=="bicycle") and cx>130 and cx<975 and cy>260):
+        if((cls=="person" or cls=="bicycle") and cx>130 and cx<975 and cy>376):  #370
             boxes_.append([x1, y1, x2, y2])
             scores_.append(cnf)
             names_.append(cls)
@@ -139,6 +141,11 @@ while True:
         class_name= track.get_class()
         trackID=track.track_id
 
+        # if trackID == 18:
+        #     trackID = 12
+        # if trackID == 9:
+        #     trackID = 4
+
         center_x,center_y = (int(((bbox[0]) + (bbox[2]))/2), int(((bbox[1])+(bbox[3]))/2))
 
         dict_of_bbox[trackID]=bbox
@@ -168,7 +175,7 @@ while True:
     
     # print(person,bicycle)
     if (len(person)>0 and len(bicycle)>0):
-        nearest_pc_pairs=closest_red_black_pairs(bicycle,person)
+        nearest_pc_pairs=closest_cycle_person_pairs(bicycle,person)
 
         for person_id, cycle_id in nearest_pc_pairs.items():
             
@@ -212,6 +219,7 @@ while True:
                 person_with_max_frame = max(cycle_dict.keys(), key=lambda key: (cycle_dict[key][1], sum(cycle_dict[key][0])/len(cycle_dict[key][0])))
 
                 if (cycle_person_iou[cycle_id][person_with_max_frame][1]>min_frame and fixed_cp_iou[0][cycle_id]==0):
+                    print("\ncycle : ", cycle_id, "owner : ", person_with_max_frame)
                     fixed_cp_iou[0][cycle_id]=person_with_max_frame
                     fixed_cp_iou[1][cycle_id]=sum(cycle_person_iou[cycle_id][person_with_max_frame][0]) / len(cycle_person_iou[cycle_id][person_with_max_frame][0])
                 
@@ -228,8 +236,7 @@ while True:
 
                     if(bicycle_parked[cycle_id][5]<frame_count_threshold_for_confirm_thief):
                         if (face_matcher(bbox_img,cycle_id)):
-                            # change2
-                            print("Alarm: Cycle : ",cycle_id," of Person : ",fixed_cp_iou[0][cycle_id], " is being theft by Person : ",person_id)
+                            print("Alarm: Cycle : ",cycle_id," Owner : ",fixed_cp_iou[0][cycle_id], " Potential Thief : ",person_id)
                             bicycle_parked[cycle_id][5]=bicycle_parked[cycle_id][5]+1
                             # change1
                             cv2.putText(img, "Potential Thief", (int(dict_of_bbox[person_id][0]), int(dict_of_bbox[person_id][1]-20)), 0, 0.5, (0, 0, 255), 1)
@@ -237,9 +244,27 @@ while True:
                         else:
                             bicycle_parked[cycle_id][1]=1
                             bicycle_parked[cycle_id][0]=0
+                            # print("face matched")
                     else:
                         cv2.putText(img, "Thief", (int(dict_of_bbox[person_id][0]), int(dict_of_bbox[person_id][1]-20)), 0, 0.5, (0, 0, 255), 1)
                         cv2.putText(img, "Beign Theft", (int(dict_of_bbox[cycle_id][0]), int(dict_of_bbox[cycle_id][1]-20)), 0, 0.5, (0, 0, 255), 1)
+
+                        # save face of thief and cycle image
+                        if(bicycle_parked[cycle_id][5]==frame_count_threshold_for_confirm_thief):
+
+                            if not os.path.exists("./Thief_and_cycle_image/"+str(cycle_id)+"/"):
+                                os.mkdir("./Thief_and_cycle_image/"+str(cycle_id)+"/")
+
+                            cv2.imwrite("./Thief_and_cycle_image/"+str(cycle_id)+"/"+str(person_id)+".jpg", bbox_img) #thief 
+                            # bbox_img_cycle = img[int(dict_of_bbox[cycle_id][1]):int(dict_of_bbox[cycle_id][3]), int(dict_of_bbox[cycle_id][0]):int(dict_of_bbox[cycle_id][2])]  #cycle
+                            # cv2.imwrite("./Thief_and_cycle_image/"+str(cycle_id)+"/cycle_"+str(cycle_id)+".jpg", bbox_img_cycle)
+                            print("Alarm: Cycle : ",cycle_id," Owner : ",fixed_cp_iou[0][cycle_id], " Thief : ",person_id)
+                            bicycle_parked[cycle_id][5]=bicycle_parked[cycle_id][5]+1
+
+                            insert_data((cycle_id, 9, person_id, 1))  #INSERT INTO cycle_owner_theif (Cycle_ID, Owner_ID, Thief_ID, Status)
+
+
+                            
 
                     # else:
                     #     print("Face didn't match")
