@@ -14,6 +14,12 @@ The objective of this project is to detect cycle theft in real-time using CCTV f
 4. **Face Matching**: If a person moved a cycle, the system used **Face Recognition** to check if the individual was the owner or a thief.
 5. **Alert Mechanism**: In case of theft, an alert was sent to the authorities, and the thief's image was displayed on a web page built with HTML, CSS, Bootstrap, and connected to a **Firebase Realtime Database**.
 
+### Flowchart of the Modules
+
+<img src="./cycle_thief_flowchart_modules.png" alt="Flowchart" style="width: 40%;">
+
+
+*Note: The flowchart illustrates the skeleton and workflow of the project's modules.*
 
 
 ## Result
