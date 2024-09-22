@@ -1,7 +1,7 @@
-# Cycle Thief Detection from Live CCTV Footage using YOLOv5 and DeepSORT
+# Cycle Thief Detection from Realtime Footage using YOLOv5 and DeepSORT
 
 ## Aim
-The objective of this project is to detect cycle theft in real-time using CCTV footage. By utilizing advanced machine learning and tracking algorithms, the system identifies potential theft incidents and notifies authorities with evidence, including the thief's image, through a web interface.
+The objective of this project is to detect cycle theft in real-time using Realtime. By utilizing advanced machine learning and tracking algorithms, the system identifies potential theft incidents and notifies authorities with evidence, including the thief's image, through a web interface.
 
 ## Approach
 1. **Data Collection**: Videos were recorded in cycle garages and parking lots for analysis.
