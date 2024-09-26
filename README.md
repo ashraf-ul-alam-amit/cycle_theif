@@ -16,7 +16,7 @@ The objective of this project is to detect cycle theft in real-time using Realti
 
 ### Flowchart of the Modules
 
-<img src="./cycle_thief_flowchart_modules.png" alt="Flowchart" style="width: 40%;">
+<img src="./FlowCharts/cycle_thief_flowchart_modules.png" alt="Flowchart" style="width: 40%;">
 
 
 *Note: The flowchart illustrates the skeleton and workflow of the project's modules.*
